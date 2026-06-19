@@ -1,0 +1,7 @@
+allowBuilds:
+  sharp: true
+  unrs-resolver: true
+minimumReleaseAgeExclude:
+  - '@types/node@26.0.0'
+  - oxlint-plugin-react-doctor@0.5.7
+  - react-doctor@0.5.7
