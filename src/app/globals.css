@@ -1,6 +1,32 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/*
+  Tailwind CSS v4 compatibility shims.
+  v4 changed a few Preflight defaults; these restore the v3 behaviour so the
+  existing design stays pixel-identical after the upgrade.
+*/
+@layer base {
+  /* v3 used gray-200 as the default border color; v4 uses currentColor. */
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
+
+  /* v3 showed a pointer cursor on buttons; v4 leaves the browser default. */
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  /* v3 placeholders used gray-400; v4 uses 50% of the current text color. */
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-gray-400);
+  }
+}
 
 :root {
   --primary: #0ea5e9;
