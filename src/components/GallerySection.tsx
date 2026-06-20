@@ -1,34 +1,7 @@
-'use client'
+import { getGallery } from '@/lib/data'
 
-import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase'
-
-export default function GallerySection() {
-  const [images, setImages] = useState<{ id: string; image_url: string }[]>([])
-  const [loading, setLoading] = useState(true)
-  const supabase = createClient()
-
-  useEffect(() => {
-    const load = async () => {
-      const { data } = await supabase
-        .from('gallery')
-        .select('id, image_url')
-        .order('created_at', { ascending: false })
-      setImages(data || [])
-      setLoading(false)
-    }
-    load()
-  }, [])
-
-  if (loading) {
-    return (
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        {[1, 2, 3].map(i => (
-          <div key={i} className="aspect-square rounded-2xl bg-slate-100 animate-pulse" />
-        ))}
-      </div>
-    )
-  }
+export default async function GallerySection() {
+  const images = await getGallery()
 
   if (images.length === 0) {
     return (

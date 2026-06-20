@@ -1,42 +1,11 @@
-'use client'
-
-import { useEffect, useState } from 'react'
+import { Suspense } from 'react'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase'
 import Navbar from '@/components/Navbar'
 import GallerySection from '@/components/GallerySection'
-
-interface Service {
-  id: string
-  name: string
-  description?: string
-  duration_minutes: number
-  price_cop: number
-}
-
-interface ClinicInfo {
-  address: string
-  phone: string
-  email: string
-  morning_start: string
-  morning_end: string
-  afternoon_start: string
-  afternoon_end: string
-  working_days: number[]
-  clinic_name?: string
-  logo_url?: string | null
-  banner_subtitle?: string
-  feature_1_title?: string
-  feature_1_desc?: string
-  feature_2_title?: string
-  feature_2_desc?: string
-  feature_3_title?: string
-  feature_3_desc?: string
-  banner_type?: 'gradient' | 'color' | 'slider'
-  banner_color_from?: string
-  banner_color_to?: string
-  banner_images?: string[]
-}
+import BannerSlider from './_components/BannerSlider'
+import { cacheLife, cacheTag } from 'next/cache'
+import { getServices, getClinicInfo } from '@/lib/data'
+import type { ClinicInfo } from '@/lib/data'
 
 const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab']
 
@@ -77,58 +46,45 @@ const DEFAULT_CI: ClinicInfo = {
 }
 
 export default function HomePage() {
-  const [services, setServices] = useState<Service[]>([])
-  const [clinicInfo, setClinicInfo] = useState<ClinicInfo | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [sliderIndex, setSliderIndex] = useState(0)
-  const supabase = createClient()
+  return (
+    <main className="min-h-screen">
+      <Navbar />
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [svcRes, ciRes] = await Promise.all([
-          supabase.from('services').select('*').order('name'),
-          supabase.from('clinic_info').select('*').limit(1).maybeSingle(),
-        ])
-        if (svcRes.data) setServices(svcRes.data)
-        if (ciRes.data) setClinicInfo(ciRes.data)
-      } catch (e) {
-        console.error('Error:', e)
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
-  }, [])
+      <Suspense fallback={<HeroSkeleton />}>
+        <HeroAndFeatures />
+      </Suspense>
 
-  const ci = clinicInfo ?? DEFAULT_CI
+      <Suspense fallback={<ServicesSkeleton />}>
+        <ServicesSection />
+      </Suspense>
+
+      {/* Gallery */}
+      <section id="galeria" className="py-16 px-4 bg-white">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl font-bold text-center text-slate-800 mb-3">Galeria</h2>
+          <p className="text-center text-slate-500 mb-10">
+            Conoce nuestro consultorio y los resultados de nuestros tratamientos
+          </p>
+          <Suspense fallback={<GallerySkeleton />}>
+            <GallerySection />
+          </Suspense>
+        </div>
+      </section>
+
+      <Suspense fallback={null}>
+        <ContactAndFooter />
+      </Suspense>
+    </main>
+  )
+}
+
+async function HeroAndFeatures() {
+  const ci = (await getClinicInfo()) ?? DEFAULT_CI
   const clinicName = ci.clinic_name || 'Consultorio Juan Carlos Molina'
   const bannerType = ci.banner_type ?? 'gradient'
   const bannerImages = ci.banner_images ?? []
   const colorFrom = ci.banner_color_from ?? '#0284c7'
   const colorTo = ci.banner_color_to ?? '#06b6d4'
-
-  useEffect(() => {
-    if (bannerType !== 'slider' || bannerImages.length <= 1) return
-    const t = setInterval(() => setSliderIndex((i) => (i + 1) % bannerImages.length), 4000)
-    return () => clearInterval(t)
-  }, [bannerType, bannerImages.length])
-
-  if (loading) {
-    return (
-      <main className="min-h-screen">
-        <Navbar />
-        <div className="h-[520px] bg-gradient-to-br from-sky-600 to-cyan-400 animate-pulse" />
-        <div className="max-w-4xl mx-auto px-4 py-16">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-40 rounded-2xl bg-slate-100 animate-pulse" />
-            ))}
-          </div>
-        </div>
-      </main>
-    )
-  }
 
   const bannerStyle =
     bannerType !== 'slider'
@@ -141,46 +97,13 @@ export default function HomePage() {
       : {}
 
   return (
-    <main className="min-h-screen">
-      <Navbar />
-
+    <>
       {/* Hero */}
       <section
         className="relative text-white py-24 px-4 overflow-hidden min-h-[340px] flex items-center"
         style={bannerStyle}
       >
-        {bannerType === 'slider' && bannerImages.length > 0 && (
-          <>
-            {bannerImages.map((src, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={i}
-                src={src}
-                alt=""
-                className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000"
-                style={{ opacity: i === sliderIndex ? 1 : 0 }}
-              />
-            ))}
-            <div className="absolute inset-0 bg-black/40" />
-            {bannerImages.length > 1 && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-                {bannerImages.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setSliderIndex(i)}
-                    className={`w-2 h-2 rounded-full transition-all ${
-                      i === sliderIndex ? 'bg-white scale-125' : 'bg-white/50'
-                    }`}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        )}
-
-        {bannerType === 'slider' && bannerImages.length === 0 && (
-          <div className="absolute inset-0 bg-gradient-to-br from-sky-600 to-cyan-400" />
-        )}
+        {bannerType === 'slider' && <BannerSlider images={bannerImages} />}
 
         <div className="relative z-10 max-w-4xl mx-auto text-center w-full">
           {ci.logo_url && (
@@ -228,63 +151,69 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+    </>
+  )
+}
 
-      {/* Services */}
-      <section id="servicios" className="py-16 px-4 bg-sky-50">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-bold text-center text-slate-800 mb-3">Nuestros Servicios</h2>
-          <p className="text-center text-slate-500 mb-10">Tratamientos dentales con la mas alta calidad</p>
-          {services.length === 0 ? (
-            <div className="text-center text-slate-400 py-12">
-              <div className="text-5xl mb-3">🦷</div>
-              <p>Los servicios apareceran aqui pronto.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {services.map((svc) => (
-                <div
-                  key={svc.id}
-                  className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex-1">
-                    <h3 className="font-bold text-slate-800 text-lg">{svc.name}</h3>
-                    {svc.description && (
-                      <p className="text-slate-500 text-sm mt-1">{svc.description}</p>
-                    )}
-                    <div className="flex items-center justify-between mt-3">
-                      <span className="text-xs text-slate-400">
-                        {svc.duration_minutes >= 60
-                          ? `${Math.floor(svc.duration_minutes / 60)} hora`
-                          : `${svc.duration_minutes} min`}
-                      </span>
-                      <span className="font-bold text-sky-600 text-lg">
-                        ${svc.price_cop.toLocaleString('es-CO')}
-                      </span>
-                    </div>
+async function ServicesSection() {
+  const services = await getServices()
+
+  return (
+    <section id="servicios" className="py-16 px-4 bg-sky-50">
+      <div className="max-w-4xl mx-auto">
+        <h2 className="text-3xl font-bold text-center text-slate-800 mb-3">Nuestros Servicios</h2>
+        <p className="text-center text-slate-500 mb-10">Tratamientos dentales con la mas alta calidad</p>
+        {services.length === 0 ? (
+          <div className="text-center text-slate-400 py-12">
+            <div className="text-5xl mb-3">🦷</div>
+            <p>Los servicios apareceran aqui pronto.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {services.map((svc) => (
+              <div
+                key={svc.id}
+                className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow"
+              >
+                <div className="flex-1">
+                  <h3 className="font-bold text-slate-800 text-lg">{svc.name}</h3>
+                  {svc.description && (
+                    <p className="text-slate-500 text-sm mt-1">{svc.description}</p>
+                  )}
+                  <div className="flex items-center justify-between mt-3">
+                    <span className="text-xs text-slate-400">
+                      {svc.duration_minutes >= 60
+                        ? `${Math.floor(svc.duration_minutes / 60)} hora`
+                        : `${svc.duration_minutes} min`}
+                    </span>
+                    <span className="font-bold text-sky-600 text-lg">
+                      ${svc.price_cop.toLocaleString('es-CO')}
+                    </span>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-          <div className="text-center mt-8">
-            <Link href="/agendar" className="btn-primary px-8 py-3 text-lg">
-              Agendar ahora
-            </Link>
+              </div>
+            ))}
           </div>
+        )}
+        <div className="text-center mt-8">
+          <Link href="/agendar" className="btn-primary px-8 py-3 text-lg">
+            Agendar ahora
+          </Link>
         </div>
-      </section>
+      </div>
+    </section>
+  )
+}
 
-      {/* Gallery */}
-      <section id="galeria" className="py-16 px-4 bg-white">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-bold text-center text-slate-800 mb-3">Galeria</h2>
-          <p className="text-center text-slate-500 mb-10">
-            Conoce nuestro consultorio y los resultados de nuestros tratamientos
-          </p>
-          <GallerySection />
-        </div>
-      </section>
+async function ContactAndFooter() {
+  'use cache'
+  cacheLife('hours')
+  cacheTag('clinic-info')
+  const ci = (await getClinicInfo()) ?? DEFAULT_CI
+  const clinicName = ci.clinic_name || 'Consultorio Juan Carlos Molina'
 
+  return (
+    <>
       {/* Contact */}
       <section id="contacto" className="py-16 px-4 bg-sky-50">
         <div className="max-w-xl mx-auto text-center">
@@ -324,6 +253,47 @@ export default function HomePage() {
           © {new Date().getFullYear()} Todos los derechos reservados
         </p>
       </footer>
-    </main>
+    </>
+  )
+}
+
+function HeroSkeleton() {
+  return (
+    <>
+      <div className="h-[520px] bg-gradient-to-br from-sky-600 to-cyan-400 animate-pulse" />
+      <div className="max-w-4xl mx-auto px-4 py-16">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-40 rounded-2xl bg-slate-100 animate-pulse" />
+          ))}
+        </div>
+      </div>
+    </>
+  )
+}
+
+function ServicesSkeleton() {
+  return (
+    <section className="py-16 px-4 bg-sky-50">
+      <div className="max-w-4xl mx-auto">
+        <div className="h-9 w-64 mx-auto rounded bg-slate-200 animate-pulse mb-3" />
+        <div className="h-5 w-80 mx-auto rounded bg-slate-100 animate-pulse mb-10" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-28 rounded-2xl bg-white border border-slate-100 animate-pulse" />
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function GallerySkeleton() {
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="aspect-square rounded-2xl bg-slate-100 animate-pulse" />
+      ))}
+    </div>
   )
 }
