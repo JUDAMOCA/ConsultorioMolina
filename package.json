@@ -10,7 +10,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint .",
+    "lint": "biome lint --write --unsafe .",
+    "format": "biome format --write .",
     "doctor:full": "react-doctor . --verbose --full",
     "doctor:diff": "react-doctor . --verbose --diff"
   },
@@ -26,10 +27,13 @@
     "react": "^19.2.7",
     "react-big-calendar": "^1.20.0",
     "react-dom": "^19.2.7",
+    "react-email": "^6.6.3",
     "react-qr-code": "^2.2.0",
+    "resend": "^6.14.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.0",
     "@tailwindcss/postcss": "^4.3.1",
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",

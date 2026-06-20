@@ -1,0 +1,70 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.0/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true,
+    "defaultBranch": "main",
+    "root": "."
+  },
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "src/**/*.ts",
+      "src/**/*.tsx",
+      "./**/*.css",
+      "./**/*.json",
+      "next.config.ts",
+      "doctor.config.ts"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "style": {
+        "useImportType": "warn"
+      },
+      "suspicious": {
+        "noUnknownAtRules": "off",
+        "noNonNullAssertedOptionalChain": "off",
+        "noArrayIndexKey": "off"
+      },
+      "correctness": {
+        "useHookAtTopLevel": "off"
+      },
+      "nursery": {
+        "useSortedClasses": {
+          "fix": "unsafe",
+          "level": "warn",
+          "options": {
+            "attributes": ["classList"],
+            "functions": ["clsx", "cva", "tw", "tw.*"]
+          }
+        }
+      }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "indentWidth": 2
+    }
+  },
+  "json": {
+    "formatter": {
+      "enabled": true,
+      "indentWidth": 2
+    }
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  }
+}
