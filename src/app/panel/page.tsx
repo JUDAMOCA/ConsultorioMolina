@@ -1,7 +1,16 @@
 import { Suspense } from 'react'
+import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
-import PanelDashboard from './PanelDashboard'
+
+import PanelShell from '@/features/panel/components/PanelShell'
+import {
+  getEarnings,
+  getPanelAppointments,
+  getPanelClinicInfo,
+  getPanelGallery,
+  getPanelServices,
+} from '@/features/panel/data'
+import { getSessionProfile } from '@/lib/session'
 
 export default function PanelPage() {
   return (
@@ -20,17 +29,34 @@ function PanelLoading() {
 }
 
 async function PanelGate() {
-  const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user, role } = await getSessionProfile()
   if (!user) redirect('/auth/login')
+  if (role !== 'dentist') redirect('/')
 
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'dentist') redirect('/')
+  // All tab data fetched server-side in parallel — no client fetching, no waterfall.
+  const [appointments, services, gallery, clinicInfo, earnings, headerList] = await Promise.all([
+    getPanelAppointments(),
+    getPanelServices(),
+    getPanelGallery(),
+    getPanelClinicInfo(),
+    getEarnings(),
+    headers(),
+  ])
 
-  const { data: appointments } = await supabase
-    .from('appointments')
-    .select('*, services(name, duration_minutes, price_cop), profiles(full_name, email, phone)')
-    .order('appointment_date').order('start_time')
+  // Prefer the configured site URL; otherwise derive the origin from the request
+  // so the QR points at the right host without any client-side window access.
+  const host = headerList.get('x-forwarded-host') ?? headerList.get('host')
+  const proto = headerList.get('x-forwarded-proto') ?? 'https'
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || (host ? `${proto}://${host}` : '')
 
-  return <PanelDashboard initialAppointments={appointments ?? []} />
+  return (
+    <PanelShell
+      appointments={appointments}
+      services={services}
+      gallery={gallery}
+      clinicInfo={clinicInfo}
+      earnings={earnings}
+      siteUrl={siteUrl}
+    />
+  )
 }
