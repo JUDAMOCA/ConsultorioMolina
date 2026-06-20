@@ -1,53 +1,33 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter, usePathname } from 'next/navigation'
-import { createClient } from '@/lib/supabase'
+import { usePathname } from 'next/navigation'
 
-export default function Navbar() {
-  const [user, setUser] = useState<any>(null)
-  const [role, setRole] = useState<string | null>(null)
+import { signOut } from '@/features/auth/actions'
+import type { Role } from '@/lib/session'
+
+// Presentational + interactive nav island. Auth state (`userPresent`, `role`)
+// is resolved on the server and passed in as props — this component never
+// touches Supabase. Sign-out is a server action submitted via a <form>.
+export default function NavbarClient({
+  userPresent,
+  role,
+}: {
+  userPresent: boolean
+  role: Role | null
+}) {
   const [menuOpen, setMenuOpen] = useState(false)
-  const supabase = createClient()
-  const router = useRouter()
   const pathname = usePathname()
 
-  useEffect(() => {
-    const init = async () => {
-      const { data: { user: u } } = await supabase.auth.getUser()
-      setUser(u)
-      if (u) {
-        const { data } = await supabase.from('profiles').select('role').eq('id', u.id).single()
-        setRole(data?.role ?? null)
-      }
-    }
-    init()
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-      if (!session?.user) setRole(null)
-    })
-    return () => listener.subscription.unsubscribe()
-  }, [])
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    setUser(null)
-    setRole(null)
-    router.push('/')
-    router.refresh()
-  }
-
-  // Si estamos en la homepage usamos anclas (#), si no usamos /#section
+  // On the homepage use bare anchors (#section); elsewhere prefix with `/`.
   const isHome = pathname === '/'
-  const sectionLink = (anchor: string) => isHome ? `#${anchor}` : `/#${anchor}`
+  const sectionLink = (anchor: string) => (isHome ? `#${anchor}` : `/#${anchor}`)
 
   return (
     <nav className="bg-white shadow-sm sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
           <Link href="/" className="flex items-center gap-2 font-bold text-sky-700 text-lg">
             🦷 <span className="hidden sm:inline">Consultorio Molina</span>
           </Link>
@@ -59,18 +39,19 @@ export default function Navbar() {
             <Link href={sectionLink('contacto')} className="hover:text-sky-600 transition-colors">Contacto</Link>
             <Link href="/agendar" className="hover:text-sky-600 transition-colors">Agendar</Link>
 
-            {user && role === 'patient' && (
+            {userPresent && role === 'patient' && (
               <Link href="/mis-citas" className="hover:text-sky-600 transition-colors">Mis citas</Link>
             )}
-            {user && role === 'dentist' && (
+            {userPresent && role === 'dentist' && (
               <Link href="/panel" className="hover:text-sky-600 transition-colors">Panel</Link>
             )}
 
-            {user ? (
-              <button onClick={handleSignOut}
-                className="text-slate-400 hover:text-red-500 transition-colors">
-                Salir
-              </button>
+            {userPresent ? (
+              <form action={signOut}>
+                <button type="submit" className="text-slate-400 hover:text-red-500 transition-colors">
+                  Salir
+                </button>
+              </form>
             ) : (
               <div className="flex items-center gap-3">
                 <Link href="/auth/login" className="hover:text-sky-600 transition-colors">Iniciar sesión</Link>
@@ -80,7 +61,13 @@ export default function Navbar() {
           </div>
 
           {/* Mobile hamburger */}
-          <button className="md:hidden p-2 text-slate-600" onClick={() => setMenuOpen(!menuOpen)}>
+          <button
+            type="button"
+            className="md:hidden p-2 text-slate-600"
+            aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((open) => !open)}
+          >
             {menuOpen ? '✕' : '☰'}
           </button>
         </div>
@@ -93,21 +80,24 @@ export default function Navbar() {
               { label: 'Galería', href: sectionLink('galeria') },
               { label: 'Contacto', href: sectionLink('contacto') },
               { label: 'Agendar cita', href: '/agendar' },
-            ].map(item => (
-              <Link key={item.label} href={item.href}
+            ].map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
                 onClick={() => setMenuOpen(false)}
-                className="block px-3 py-2 text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors">
+                className="block px-3 py-2 text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors"
+              >
                 {item.label}
               </Link>
             ))}
 
-            {user && role === 'patient' && (
+            {userPresent && role === 'patient' && (
               <Link href="/mis-citas" onClick={() => setMenuOpen(false)}
                 className="block px-3 py-2 text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors">
                 📋 Mis citas
               </Link>
             )}
-            {user && role === 'dentist' && (
+            {userPresent && role === 'dentist' && (
               <Link href="/panel" onClick={() => setMenuOpen(false)}
                 className="block px-3 py-2 text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors">
                 🦷 Panel del odontólogo
@@ -115,11 +105,13 @@ export default function Navbar() {
             )}
 
             <div className="border-t border-slate-100 mt-2 pt-2">
-              {user ? (
-                <button onClick={() => { handleSignOut(); setMenuOpen(false) }}
-                  className="block w-full text-left px-3 py-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                  Cerrar sesión
-                </button>
+              {userPresent ? (
+                <form action={signOut}>
+                  <button type="submit"
+                    className="block w-full text-left px-3 py-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                    Cerrar sesión
+                  </button>
+                </form>
               ) : (
                 <div className="space-y-1">
                   <Link href="/auth/login" onClick={() => setMenuOpen(false)}
