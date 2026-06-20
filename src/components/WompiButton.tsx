@@ -2,13 +2,13 @@
 
 import { useState } from 'react'
 
+import { startAppointmentCheckout } from '@/app/pagos/actions'
+
 interface WompiButtonProps {
-  amountCOP: number
-  reference: string
-  redirectUrl: string
+  appointmentId: string
 }
 
-export default function WompiButton({ amountCOP, reference }: WompiButtonProps) {
+export default function WompiButton({ appointmentId }: WompiButtonProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -16,44 +16,23 @@ export default function WompiButton({ amountCOP, reference }: WompiButtonProps) 
     setLoading(true)
     setError('')
 
-    try {
-      const uniqueRef = `${reference}-${Date.now()}`
-      const amountInCents = amountCOP * 100
+    // The amount, reference, signature and keys are all decided on the server
+    // inside the action — the client only receives the final checkout URL.
+    const result = await startAppointmentCheckout(appointmentId)
 
-      const res = await fetch('/api/wompi/signature', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reference: uniqueRef, amountInCents, currency: 'COP' }),
-      })
-
-      const data = await res.json()
-      if (data.error) { setError(data.error); setLoading(false); return }
-
-      const publicKey = process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY
-      // Usa la URL pública de ngrok si está definida, si no usa window.location.origin
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
-      const finalRedirect = `${siteUrl}/pagos/resultado?reference=${reference}`
-
-      const params = new URLSearchParams({
-        'public-key': publicKey || '',
-        'currency': 'COP',
-        'amount-in-cents': String(amountInCents),
-        'reference': uniqueRef,
-        'signature:integrity': data.signature,
-        'redirect-url': finalRedirect,
-      })
-
-      window.location.href = `https://checkout.wompi.co/p/?${params.toString()}`
-
-    } catch (e: any) {
-      setError('Error al conectar con la pasarela de pago.')
+    if ('error' in result) {
+      setError(result.error)
       setLoading(false)
+      return
     }
+
+    window.location.href = result.url
   }
 
   return (
     <div>
       <button
+        type="button"
         onClick={handlePay}
         disabled={loading}
         className="w-full bg-[#FF5B30] hover:bg-[#e04e26] text-white font-bold py-4 px-6 rounded-xl text-lg transition-all shadow-md flex items-center justify-center gap-3 disabled:opacity-60"
