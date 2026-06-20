@@ -1,9 +1,11 @@
 import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import Navbar from '@/components/Navbar'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
-import CitasView from './CitasView'
+
+import Navbar from '@/features/navigation/components/Navbar'
+import CitasView from '@/features/appointments/components/CitasView'
+import { getMyAppointments } from '@/features/appointments/data'
+import { getSessionUser } from '@/lib/session'
 
 export default function MisCitasPage() {
   return (
@@ -27,16 +29,9 @@ export default function MisCitasPage() {
 }
 
 async function CitasList() {
-  const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getSessionUser()
   if (!user) redirect('/auth/login')
 
-  const { data } = await supabase
-    .from('appointments')
-    .select('*, services(name, duration_minutes, price_cop)')
-    .eq('patient_id', user.id)
-    .order('appointment_date', { ascending: true })
-    .order('start_time', { ascending: true })
-
-  return <CitasView appointments={data ?? []} />
+  const appointments = await getMyAppointments(user.id)
+  return <CitasView appointments={appointments} />
 }

@@ -1,52 +1,33 @@
 'use client'
 
-import { useState } from 'react'
-import { createClient } from '@/lib/supabase'
+import { useOptimistic, useTransition } from 'react'
 import Link from 'next/link'
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: '⏳ Pendiente',
-  confirmed: '✅ Confirmada',
-  cancelled: '❌ Cancelada',
-}
-const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-700',
-  confirmed: 'bg-green-100 text-green-700',
-  cancelled: 'bg-slate-100 text-slate-500',
-}
+import { cancelAppointment } from '@/features/appointments/actions'
+import { canCancel, isPast, STATUS_COLORS, STATUS_LABELS } from '@/features/appointments/lib/status'
+import type { PatientAppointment } from '@/features/appointments/data'
 
-export default function CitasView({ appointments: initial }: { appointments: any[] }) {
-  const [appointments, setAppointments] = useState<any[]>(initial)
-  const [cancelling, setCancelling] = useState<string | null>(null)
-  const supabase = createClient()
+export default function CitasView({ appointments }: { appointments: PatientAppointment[] }) {
+  // Optimistically move the cancelled appointment to "historial" instantly; the
+  // server action revalidates the page and `appointments` settles to truth.
+  const [view, applyCancel] = useOptimistic(appointments, (state, id: string) =>
+    state.map((a) => (a.id === id ? { ...a, status: 'cancelled' as const } : a))
+  )
+  const [, startTransition] = useTransition()
 
-  const canCancel = (appt: any) => {
-    if (appt.status === 'cancelled') return false
-    const apptDateTime = new Date(`${appt.appointment_date}T${appt.start_time}`)
-    const now = new Date()
-    const diffMs = apptDateTime.getTime() - now.getTime()
-    const diffHours = diffMs / (1000 * 60 * 60)
-    return diffHours > 1
-  }
-
-  const handleCancel = async (id: string) => {
+  const handleCancel = (id: string) => {
     if (!confirm('¿Estás seguro de que deseas cancelar esta cita?')) return
-    setCancelling(id)
-    await supabase.from('appointments').update({ status: 'cancelled' }).eq('id', id)
-    setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'cancelled' } : a))
-    setCancelling(null)
+    startTransition(async () => {
+      applyCancel(id)
+      const result = await cancelAppointment(id)
+      if ('error' in result) alert(result.error)
+    })
   }
 
-  const upcoming = appointments.filter(a => {
-    const d = new Date(`${a.appointment_date}T${a.start_time}`)
-    return d >= new Date() && a.status !== 'cancelled'
-  })
-  const past = appointments.filter(a => {
-    const d = new Date(`${a.appointment_date}T${a.start_time}`)
-    return d < new Date() || a.status === 'cancelled'
-  })
+  const upcoming = view.filter((a) => !isPast(a))
+  const past = view.filter(isPast)
 
-  if (appointments.length === 0) {
+  if (view.length === 0) {
     return (
       <div className="card text-center py-16">
         <div className="text-5xl mb-4">📭</div>
@@ -63,7 +44,7 @@ export default function CitasView({ appointments: initial }: { appointments: any
         <div>
           <h2 className="font-bold text-slate-700 text-lg mb-3">Próximas citas</h2>
           <div className="space-y-4">
-            {upcoming.map(appt => (
+            {upcoming.map((appt) => (
               <div key={appt.id} className="card">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
@@ -79,7 +60,7 @@ export default function CitasView({ appointments: initial }: { appointments: any
                     <p className="text-sky-600 font-medium">
                       {new Date(appt.appointment_date + 'T12:00:00').toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                     </p>
-                    <p className="text-slate-500 text-sm">🕐 {appt.start_time?.slice(0,5)} – {appt.end_time?.slice(0,5)}</p>
+                    <p className="text-slate-500 text-sm">🕐 {appt.start_time?.slice(0, 5)} – {appt.end_time?.slice(0, 5)}</p>
                     {appt.services?.price_cop && (
                       <p className="text-sm text-slate-400 mt-1">💰 ${appt.services.price_cop.toLocaleString('es-CO')} COP</p>
                     )}
@@ -87,11 +68,11 @@ export default function CitasView({ appointments: initial }: { appointments: any
                   <div>
                     {canCancel(appt) ? (
                       <button
+                        type="button"
                         onClick={() => handleCancel(appt.id)}
-                        disabled={cancelling === appt.id}
                         className="bg-red-50 hover:bg-red-100 text-red-600 font-semibold py-2 px-4 rounded-xl text-sm transition-all border border-red-200"
                       >
-                        {cancelling === appt.id ? 'Cancelando...' : 'Cancelar cita'}
+                        Cancelar cita
                       </button>
                     ) : appt.status !== 'cancelled' && (
                       <div className="text-xs text-slate-400 text-center max-w-[120px]">
@@ -111,7 +92,7 @@ export default function CitasView({ appointments: initial }: { appointments: any
         <div>
           <h2 className="font-bold text-slate-700 text-lg mb-3">Historial</h2>
           <div className="space-y-3">
-            {past.map(appt => (
+            {past.map((appt) => (
               <div key={appt.id} className="card opacity-70">
                 <div className="flex items-center justify-between">
                   <div>
@@ -120,7 +101,7 @@ export default function CitasView({ appointments: initial }: { appointments: any
                     </span>
                     <p className="font-semibold text-slate-700 mt-1">{appt.services?.name}</p>
                     <p className="text-slate-400 text-sm">
-                      {new Date(appt.appointment_date + 'T12:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })} · {appt.start_time?.slice(0,5)}
+                      {new Date(appt.appointment_date + 'T12:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })} · {appt.start_time?.slice(0, 5)}
                     </p>
                   </div>
                 </div>
