@@ -22,7 +22,7 @@ export default function BannerSlider({ images }: { images: string[] }) {
       {images.map((src, i) => (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          key={i}
+          key={src}
           src={src}
           alt=""
           className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000"
@@ -32,9 +32,11 @@ export default function BannerSlider({ images }: { images: string[] }) {
       <div className="absolute inset-0 bg-black/40" />
       {images.length > 1 && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-          {images.map((_, i) => (
+          {images.map((src, i) => (
             <button
-              key={i}
+              key={src}
+              type="button"
+              aria-label={`Ir a la imagen ${i + 1}`}
               onClick={() => setSliderIndex(i)}
               className={`w-2 h-2 rounded-full transition-all ${
                 i === sliderIndex ? 'bg-white scale-125' : 'bg-white/50'

@@ -1,3 +1,5 @@
+import Image from 'next/image'
+
 import { getGallery } from '@/lib/data'
 
 export default async function GallerySection() {
@@ -14,13 +16,14 @@ export default async function GallerySection() {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-      {images.map(img => (
-        <div key={img.id} className="rounded-2xl overflow-hidden shadow-sm border border-slate-100" style={{ aspectRatio: '4/3' }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+      {images.map((img) => (
+        <div key={img.id} className="relative rounded-2xl overflow-hidden shadow-sm border border-slate-100" style={{ aspectRatio: '4/3' }}>
+          <Image
             src={img.image_url}
             alt="Foto del consultorio"
-            className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
+            className="object-cover hover:scale-105 transition-transform duration-300"
           />
         </div>
       ))}
