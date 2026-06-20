@@ -30,6 +30,12 @@ export async function startAppointmentCheckout(
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Debes iniciar sesión para pagar.' }
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('full_name, phone')
+    .eq('id', user.id)
+    .maybeSingle()
+
   // RLS already scopes this to the user's rows; we re-check ownership below.
   const { data: appointment } = await supabase
     .from('appointments')
@@ -73,7 +79,11 @@ export async function startAppointmentCheckout(
       currency: 'COP',
       integrityKey,
       redirectUrl: siteUrl ? `${siteUrl}/pagos/resultado` : undefined,
-      customerData: { email: user.email },
+      customerData: {
+        email: user.email,
+        fullName: profile?.full_name ?? undefined,
+        phoneNumber: profile?.phone ?? undefined,
+      },
     })
     return { url }
   } catch {

@@ -6,9 +6,10 @@ import { startAppointmentCheckout } from '@/app/pagos/actions'
 
 interface WompiButtonProps {
   appointmentId: string
+  label?: string
 }
 
-export default function WompiButton({ appointmentId }: WompiButtonProps) {
+export default function WompiButton({ appointmentId, label }: WompiButtonProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -39,7 +40,7 @@ export default function WompiButton({ appointmentId }: WompiButtonProps) {
       >
         {loading ? (
           <><div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Conectando con Wompi...</>
-        ) : '💳 Pagar con Wompi'}
+        ) : `💳 ${label ?? 'Pagar con Wompi'}`}
       </button>
       {error && (
         <div className="mt-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">⚠️ {error}</div>

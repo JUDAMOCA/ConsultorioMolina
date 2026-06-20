@@ -1,7 +1,8 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
 
-import Navbar from '@/components/Navbar'
+import Navbar from '@/features/navigation/components/Navbar'
+import WompiButton from '@/features/payments/components/WompiButton'
 import { confirmAppointmentByTransaction, type ReconcileOutcome } from '@/lib/wompi'
 
 type View = 'approved' | 'pending' | 'declined' | 'unverified'
@@ -56,6 +57,7 @@ async function Resultado({
 
   const view: View = result ? toView(result.outcome) : 'unverified'
   const transaction = result?.transaction ?? null
+  const appointmentId = result?.appointmentId ?? null
 
   return (
     <div className="flex items-center justify-center py-20 px-4">
@@ -91,11 +93,18 @@ async function Resultado({
           <>
             <div className="text-6xl mb-4">❌</div>
             <h2 className="text-2xl font-bold text-red-600 mb-2">Pago rechazado</h2>
-            <p className="text-slate-500 mb-4">El pago no pudo procesarse. Tu cita sigue pendiente de pago.</p>
-            <div className="flex gap-3">
-              <Link href="/agendar" className="btn-secondary flex-1 text-center">Intentar de nuevo</Link>
-              <Link href="/" className="btn-primary flex-1 text-center">Ir al inicio</Link>
-            </div>
+            <p className="text-slate-500 mb-4">El pago no pudo procesarse. Tu cita sigue reservada — puedes reintentar el pago o volver al inicio.</p>
+            {appointmentId ? (
+              <div className="space-y-3">
+                <WompiButton appointmentId={appointmentId} label="Reintentar pago" />
+                <Link href="/" className="btn-secondary w-full block text-center">Ir al inicio</Link>
+              </div>
+            ) : (
+              <div className="flex gap-3">
+                <Link href="/agendar" className="btn-secondary flex-1 text-center">Agendar de nuevo</Link>
+                <Link href="/" className="btn-primary flex-1 text-center">Ir al inicio</Link>
+              </div>
+            )}
           </>
         )}
 

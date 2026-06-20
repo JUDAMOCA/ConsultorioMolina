@@ -120,6 +120,7 @@ export async function reconcileAppointmentPayment(
  */
 export async function confirmAppointmentByTransaction(transactionId: string): Promise<{
   outcome: ReconcileOutcome
+  appointmentId: string | null
   transaction: {
     id: string
     reference: string
@@ -128,9 +129,9 @@ export async function confirmAppointmentByTransaction(transactionId: string): Pr
   } | null
 }> {
   const [error, transaction] = await getWompiClient().transactions.getTransaction(transactionId)
-  if (error || !transaction) return { outcome: 'error', transaction: null }
+  if (error || !transaction) return { outcome: 'error', appointmentId: null, transaction: null }
 
-  const { outcome } = await reconcileAppointmentPayment({
+  const { outcome, appointmentId } = await reconcileAppointmentPayment({
     reference: transaction.reference,
     status: transaction.status,
     amountInCents: transaction.amount_in_cents,
@@ -139,6 +140,7 @@ export async function confirmAppointmentByTransaction(transactionId: string): Pr
 
   return {
     outcome,
+    appointmentId,
     transaction: {
       id: transaction.id,
       reference: transaction.reference,
