@@ -1,9 +1,10 @@
 import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
-import Navbar from '@/components/Navbar'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+
+import Navbar from '@/features/navigation/components/Navbar'
+import BookingFlow from '@/features/booking/components/BookingFlow'
 import { getServices, getClinicInfo } from '@/lib/data'
-import BookingFlow from './BookingFlow'
+import { getSessionProfile } from '@/lib/session'
 
 export default function AgendarPage() {
   return (
@@ -25,15 +26,12 @@ export default function AgendarPage() {
 }
 
 async function AgendarGate() {
-  const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user, role } = await getSessionProfile()
   if (!user) redirect('/auth/login?redirect=/agendar')
-
   // No dejar que el odontólogo agende
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role === 'dentist') redirect('/panel')
+  if (role === 'dentist') redirect('/panel')
 
   const [services, clinicInfo] = await Promise.all([getServices(true), getClinicInfo()])
 
-  return <BookingFlow services={services} clinicInfo={clinicInfo} userId={user.id} />
+  return <BookingFlow services={services} clinicInfo={clinicInfo} />
 }
