@@ -7,7 +7,7 @@ export default {
       ".agents/**",
       "node_modules/**",
       ".git/**",
-      "next-env.d.ts"
-    ]
-  }
-} satisfies ReactDoctorConfig
+      "next-env.d.ts",
+    ],
+  },
+} satisfies ReactDoctorConfig;
